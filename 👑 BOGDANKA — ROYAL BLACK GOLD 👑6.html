@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BOGDANKA — Royal Black Gold</title>
+
+<style>
+body{
+    margin:0;
+    font-family:Segoe UI, sans-serif;
+    background:#000;
+    color:#fff;
+}
+header{
+    text-align:center;
+    padding:30px;
+    font-size:28px;
+    font-weight:bold;
+    background:linear-gradient(90deg,#d4af37,#ffd700,#d4af37);
+    -webkit-background-clip:text;
+    -webkit-text-fill-color:transparent;
+    text-shadow:0 0 15px rgba(255,215,0,0.7);
+}
+.container{
+    max-width:1200px;
+    margin:auto;
+    padding:20px;
+}
+form{
+    background:#111;
+    padding:20px;
+    border-radius:15px;
+    border:1px solid #d4af37;
+    margin-bottom:25px;
+}
+input,select{
+    width:100%;
+    padding:10px;
+    margin:5px 0;
+    border-radius:8px;
+    border:1px solid #d4af37;
+    background:#000;
+    color:#fff;
+}
+button{
+    background:linear-gradient(90deg,#d4af37,#ffd700);
+    border:none;
+    padding:10px 18px;
+    border-radius:8px;
+    font-weight:bold;
+    cursor:pointer;
+    margin-top:8px;
+}
+button:hover{
+    opacity:0.85;
+}
+table{
+    width:100%;
+    border-collapse:collapse;
+}
+th{
+    background:#d4af37;
+    color:#000;
+}
+th,td{
+    padding:10px;
+    border:1px solid #333;
+    text-align:center;
+}
+tr:nth-child(even){
+    background:#111;
+}
+.warning{
+    color:red;
+    font-weight:bold;
+}
+.total{
+    margin-top:20px;
+    font-size:22px;
+    text-align:right;
+    color:#ffd700;
+}
+</style>
+</head>
+
+<body>
+
+<header>👑 BOGDANKA — ROYAL BLACK GOLD 👑</header>
+
+<div class="container">
+
+<form id="productForm">
+<input type="hidden" id="editIndex">
+
+<label>Nazwa</label>
+<input type="text" id="name" required>
+
+<label>Ilość</label>
+<input type="number" step="0.01" id="quantity" required>
+<select id="quantityUnit">
+<option value="kg">kg</option>
+<option value="szt">szt</option>
+</select>
+
+<label>Cena zakupu</label>
+<input type="number" step="0.01" id="buyPrice" required>
+<select id="buyUnit">
+<option value="kg">za kg</option>
+<option value="szt">za szt</option>
+</select>
+
+<label>Cena sprzedaży</label>
+<input type="number" step="0.01" id="sellPrice" required>
+<select id="sellUnit">
+<option value="kg">za kg</option>
+<option value="szt">za szt</option>
+</select>
+
+<button type="submit">Zapisz</button>
+<button type="button" onclick="exportCSV()">📁 Excel</button>
+</form>
+
+<table>
+<thead>
+<tr>
+<th>Nazwa</th>
+<th>Ilość</th>
+<th>Cena zakupu</th>
+<th>Cena sprzedaży</th>
+<th>Zysk jedn.</th>
+<th>Zysk całk.</th>
+<th>Akcja</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
+
+<div class="total" id="totalProfit"></div>
+
+</div>
+
+<script>
+let products = JSON.parse(localStorage.getItem("bogdankaData")) || [];
+
+const form = document.getElementById("productForm");
+const tableBody = document.getElementById("tableBody");
+const totalProfitEl = document.getElementById("totalProfit");
+
+function save(){
+    localStorage.setItem("bogdankaData", JSON.stringify(products));
+}
+
+function render(){
+    tableBody.innerHTML="";
+    let totalProfit=0;
+
+    products.forEach((p,index)=>{
+        let unitProfit=0;
+        let total=0;
+        let warning="";
+
+        if(p.quantityUnit===p.buyUnit && p.quantityUnit===p.sellUnit){
+            unitProfit=p.sellPrice-p.buyPrice;
+            total=unitProfit*p.quantity;
+            totalProfit+=total;
+        } else {
+            warning="<div class='warning'>⚠ Jednostki nie pasują</div>";
+        }
+
+        tableBody.innerHTML+=`
+        <tr>
+        <td>${p.name}${warning}</td>
+        <td>${p.quantity} ${p.quantityUnit}</td>
+        <td>${p.buyPrice} zł (${p.buyUnit})</td>
+        <td>${p.sellPrice} zł (${p.sellUnit})</td>
+        <td>${unitProfit.toFixed(2)} zł</td>
+        <td>${total.toFixed(2)} zł</td>
+        <td>
+        <button onclick="editProduct(${index})">✏</button>
+        <button onclick="deleteProduct(${index})">❌</button>
+        </td>
+        </tr>`;
+    });
+
+    totalProfitEl.innerHTML="💰 Łączny zysk: "+totalProfit.toFixed(2)+" zł";
+}
+
+function deleteProduct(index){
+    products.splice(index,1);
+    save();
+    render();
+}
+
+function editProduct(index){
+    const p=products[index];
+    document.getElementById("name").value=p.name;
+    document.getElementById("quantity").value=p.quantity;
+    document.getElementById("quantityUnit").value=p.quantityUnit;
+    document.getElementById("buyPrice").value=p.buyPrice;
+    document.getElementById("buyUnit").value=p.buyUnit;
+    document.getElementById("sellPrice").value=p.sellPrice;
+    document.getElementById("sellUnit").value=p.sellUnit;
+    document.getElementById("editIndex").value=index;
+}
+
+form.addEventListener("submit",function(e){
+    e.preventDefault();
+
+    const data={
+        name:document.getElementById("name").value,
+        quantity:parseFloat(document.getElementById("quantity").value),
+        quantityUnit:document.getElementById("quantityUnit").value,
+        buyPrice:parseFloat(document.getElementById("buyPrice").value),
+        buyUnit:document.getElementById("buyUnit").value,
+        sellPrice:parseFloat(document.getElementById("sellPrice").value),
+        sellUnit:document.getElementById("sellUnit").value
+    };
+
+    const editIndex=document.getElementById("editIndex").value;
+
+    if(editIndex===""){
+        products.push(data);
+    } else {
+        products[editIndex]=data;
+        document.getElementById("editIndex").value="";
+    }
+
+    save();
+    form.reset();
+    render();
+});
+
+function exportCSV(){
+    let csv="Nazwa,Ilość,Cena zakupu,Cena sprzedaży,Zysk\n";
+    products.forEach(p=>{
+        let profit=0;
+        if(p.quantityUnit===p.buyUnit && p.quantityUnit===p.sellUnit){
+            profit=(p.sellPrice-p.buyPrice)*p.quantity;
+        }
+        csv+=`${p.name},${p.quantity} ${p.quantityUnit},${p.buyPrice},${p.sellPrice},${profit}\n`;
+    });
+
+    const blob=new Blob([csv],{type:"text/csv"});
+    const link=document.createElement("a");
+    link.href=URL.createObjectURL(blob);
+    link.download="bogdanka.xlsx";
+    link.click();
+}
+
+render();
+</script>
+
+</body>
+</html>
